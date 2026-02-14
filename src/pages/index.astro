@@ -7,7 +7,7 @@ const VENUE_ID = "default";
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Menu</title>
+  <title>MenuLinx</title>
 </head>
 <body>
 <div id="app"></div>
@@ -22,29 +22,45 @@ function formatPrice(pence) {
 }
 
 async function loadMenu() {
-  const res = await fetch(`/api/menu?venueId=${VENUE_ID}`);
-  const data = await res.json();
-  menu = data.menu;
-  render();
+  try {
+    const res = await fetch(`/api/menu?venueId=${VENUE_ID}`);
+    const data = await res.json();
+
+    // ⭐ TRUE FIRST-RUN HANDLING
+    if (!data.ok || !data.menu) {
+      showSetupScreen();
+      return;
+    }
+
+    menu = data.menu;
+    renderMenu();
+  } catch (err) {
+    showSetupScreen();
+  }
+}
+
+function showSetupScreen() {
+  const app = document.getElementById("app");
+  app.innerHTML = `
+    <h2>Welcome to MenuLinx</h2>
+    <p>No café or menu has been set up yet.</p>
+    <p>Please open the admin panel to create your café and menu.</p>
+    <a href="/admin"><button>Create Your Café</button></a>
+  `;
 }
 
 function addItem(id) {
   const existing = basket.find(i => i.itemId === id);
-  if (existing) {
-    existing.qty++;
-  } else {
-    basket.push({ itemId: id, qty: 1 });
-  }
-  render();
+  if (existing) existing.qty++;
+  else basket.push({ itemId: id, qty: 1 });
+  renderMenu();
 }
 
 function calculateTotal() {
   let total = 0;
   basket.forEach(b => {
     const item = menu.items.find(m => m.id === b.itemId);
-    if (item) {
-      total += Math.round(item.price * 100) * b.qty;
-    }
+    if (item) total += Math.round(item.price * 100) * b.qty;
   });
   return total;
 }
@@ -53,29 +69,14 @@ async function placeOrder() {
   const name = document.getElementById("name").value.trim();
   const contact = document.getElementById("contact").value.trim();
 
-  if (!name) {
-    alert("Please enter your name");
-    return;
-  }
-
-  if (basket.length === 0) {
-    alert("Basket empty");
-    return;
-  }
+  if (!name) return alert("Please enter your name");
+  if (basket.length === 0) return alert("Basket empty");
 
   const payload = {
     venueId: VENUE_ID,
-    customer: {
-      name,
-      contact
-    },
-    fulfilment: {
-      method: "COLLECTION"
-    },
-    items: basket.map(b => ({
-      itemId: b.itemId,
-      qty: b.qty
-    }))
+    customer: { name, contact },
+    fulfilment: { method: "COLLECTION" },
+    items: basket.map(b => ({ itemId: b.itemId, qty: b.qty }))
   };
 
   const res = await fetch("/api/orders", {
@@ -89,21 +90,14 @@ async function placeOrder() {
   if (data.ok) {
     alert("Order placed successfully");
     basket = [];
-    document.getElementById("name").value = "";
-    document.getElementById("contact").value = "";
-    render();
+    renderMenu();
   } else {
     alert(data.error || "Order failed");
   }
 }
 
-function render() {
+function renderMenu() {
   const app = document.getElementById("app");
-
-  if (!menu) {
-    app.innerHTML = "Loading...";
-    return;
-  }
 
   let html = `<h2>${menu.restaurantName}</h2>`;
 
