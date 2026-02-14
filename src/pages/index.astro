@@ -7,123 +7,64 @@ const VENUE_ID = "default";
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MenuLinx</title>
+  <title>Create your Business – MenuLinx</title>
 </head>
 <body>
-<div id="app"></div>
+  <h2>Create your Business</h2>
+
+  <form id="setupForm">
+    <input placeholder="Business Name" id="name" required /><br/><br/>
+    <input placeholder="Business Type" id="type" required /><br/><br/>
+    <input placeholder="Strap Line" id="strap" /><br/><br/>
+    <input placeholder="Business Address" id="address" /><br/><br/>
+    <input placeholder="Business Tel No" id="tel" /><br/><br/>
+    <input placeholder="Business Email" id="email" /><br/><br/>
+    <input placeholder="Slug (your public link)" id="slug" required /><br/><br/>
+
+    <button type="submit">Create Business</button>
+  </form>
+
+  <p id="msg"></p>
 
 <script>
-const VENUE_ID = "default";
-let menu = null;
-let basket = [];
+const form = document.getElementById("setupForm");
+const msg = document.getElementById("msg");
 
-function formatPrice(pence) {
-  return "£" + (pence / 100).toFixed(2);
-}
-
-async function loadMenu() {
-  try {
-    const res = await fetch(`/api/menu?venueId=${VENUE_ID}`);
-    const data = await res.json();
-
-    // ⭐ TRUE FIRST-RUN HANDLING
-    if (!data.ok || !data.menu) {
-      showSetupScreen();
-      return;
-    }
-
-    menu = data.menu;
-    renderMenu();
-  } catch (err) {
-    showSetupScreen();
-  }
-}
-
-function showSetupScreen() {
-  const app = document.getElementById("app");
-  app.innerHTML = `
-    <h2>Welcome to MenuLinx</h2>
-    <p>No café or menu has been set up yet.</p>
-    <p>Please open the admin panel to create your café and menu.</p>
-    <a href="/admin"><button>Create Your Café</button></a>
-  `;
-}
-
-function addItem(id) {
-  const existing = basket.find(i => i.itemId === id);
-  if (existing) existing.qty++;
-  else basket.push({ itemId: id, qty: 1 });
-  renderMenu();
-}
-
-function calculateTotal() {
-  let total = 0;
-  basket.forEach(b => {
-    const item = menu.items.find(m => m.id === b.itemId);
-    if (item) total += Math.round(item.price * 100) * b.qty;
-  });
-  return total;
-}
-
-async function placeOrder() {
-  const name = document.getElementById("name").value.trim();
-  const contact = document.getElementById("contact").value.trim();
-
-  if (!name) return alert("Please enter your name");
-  if (basket.length === 0) return alert("Basket empty");
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
   const payload = {
-    venueId: VENUE_ID,
-    customer: { name, contact },
-    fulfilment: { method: "COLLECTION" },
-    items: basket.map(b => ({ itemId: b.itemId, qty: b.qty }))
+    venueId: "default",
+    name: document.getElementById("name").value.trim(),
+    type: document.getElementById("type").value.trim(),
+    strap: document.getElementById("strap").value.trim(),
+    address: document.getElementById("address").value.trim(),
+    tel: document.getElementById("tel").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    slug: document.getElementById("slug").value.trim()
   };
 
-  const res = await fetch("/api/orders", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+  msg.textContent = "Creating business…";
 
-  const data = await res.json();
+  try {
+    const res = await fetch("/api/admin/venue-settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-  if (data.ok) {
-    alert("Order placed successfully");
-    basket = [];
-    renderMenu();
-  } else {
-    alert(data.error || "Order failed");
+    const data = await res.json();
+
+    if (data.ok) {
+      msg.textContent = "Business created successfully.";
+      window.location.href = "/admin";
+    } else {
+      msg.textContent = data.error || "Failed to create business.";
+    }
+  } catch (err) {
+    msg.textContent = "Network error creating business.";
   }
-}
-
-function renderMenu() {
-  const app = document.getElementById("app");
-
-  let html = `<h2>${menu.restaurantName}</h2>`;
-
-  menu.items.forEach(item => {
-    html += `
-      <div style="border:1px solid #ccc;padding:10px;margin-bottom:10px;">
-        <strong>${item.name}</strong><br/>
-        ${item.description}<br/>
-        £${item.price.toFixed(2)}<br/>
-        <button onclick="addItem('${item.id}')">Add</button>
-      </div>
-    `;
-  });
-
-  html += `
-    <h3>Your Details</h3>
-    <input id="name" placeholder="Customer Name" /><br/><br/>
-    <input id="contact" placeholder="Phone / Email" /><br/><br/>
-    <h3>Total: ${formatPrice(calculateTotal())}</h3>
-    <button onclick="placeOrder()">Place Order</button>
-  `;
-
-  app.innerHTML = html;
-}
-
-loadMenu();
+});
 </script>
 </body>
 </html>
