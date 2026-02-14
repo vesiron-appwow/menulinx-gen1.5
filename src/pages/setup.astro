@@ -1,0 +1,70 @@
+---
+const VENUE_ID = "default";
+---
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create your Business – MenuLinx</title>
+</head>
+<body>
+  <h2>Create your Business</h2>
+
+  <form id="setupForm">
+    <input placeholder="Business Name" id="name" required /><br/><br/>
+    <input placeholder="Business Type" id="type" required /><br/><br/>
+    <input placeholder="Strap Line" id="strap" /><br/><br/>
+    <input placeholder="Business Address" id="address" /><br/><br/>
+    <input placeholder="Business Tel No" id="tel" /><br/><br/>
+    <input placeholder="Business Email" id="email" /><br/><br/>
+    <input placeholder="Slug (your public link)" id="slug" required /><br/><br/>
+
+    <button type="submit">Create Business</button>
+  </form>
+
+  <p id="msg"></p>
+
+<script>
+const form = document.getElementById("setupForm");
+const msg = document.getElementById("msg");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const payload = {
+    venueId: "default",
+    name: document.getElementById("name").value.trim(),
+    type: document.getElementById("type").value.trim(),
+    strap: document.getElementById("strap").value.trim(),
+    address: document.getElementById("address").value.trim(),
+    tel: document.getElementById("tel").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    slug: document.getElementById("slug").value.trim()
+  };
+
+  msg.textContent = "Creating business…";
+
+  try {
+    const res = await fetch("/api/admin/venue-settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+      msg.textContent = "Business created successfully.";
+      window.location.href = "/admin";
+    } else {
+      msg.textContent = data.error || "Failed to create business.";
+    }
+  } catch (err) {
+    msg.textContent = "Network error creating business.";
+  }
+});
+</script>
+</body>
+</html>
