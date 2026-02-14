@@ -1,0 +1,21 @@
+---
+import Layout from "../../layouts/BaseLayout.astro";
+---
+
+<Layout title="Orders">
+  <h1>Orders</h1>
+
+  <button onclick="loadOrders()">Refresh</button>
+  <pre id="orders"></pre>
+
+<script>
+async function loadOrders() {
+  const r = await fetch("/api/admin/orders?venueId=default");
+  const data = await r.json();
+  document.getElementById("orders").textContent =
+    JSON.stringify(data, null, 2);
+}
+
+loadOrders();
+</script>
+</Layout>

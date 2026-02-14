@@ -1,0 +1,135 @@
+---
+const VENUE_ID = "default";
+---
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu</title>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const VENUE_ID = "default";
+let menu = null;
+let basket = [];
+
+function formatPrice(pence) {
+  return "£" + (pence / 100).toFixed(2);
+}
+
+async function loadMenu() {
+  const res = await fetch(`/api/menu?venueId=${VENUE_ID}`);
+  const data = await res.json();
+  menu = data.menu;
+  render();
+}
+
+function addItem(id) {
+  const existing = basket.find(i => i.itemId === id);
+  if (existing) {
+    existing.qty++;
+  } else {
+    basket.push({ itemId: id, qty: 1 });
+  }
+  render();
+}
+
+function calculateTotal() {
+  let total = 0;
+  basket.forEach(b => {
+    const item = menu.items.find(m => m.id === b.itemId);
+    if (item) {
+      total += Math.round(item.price * 100) * b.qty;
+    }
+  });
+  return total;
+}
+
+async function placeOrder() {
+  const name = document.getElementById("name").value.trim();
+  const contact = document.getElementById("contact").value.trim();
+
+  if (!name) {
+    alert("Please enter your name");
+    return;
+  }
+
+  if (basket.length === 0) {
+    alert("Basket empty");
+    return;
+  }
+
+  const payload = {
+    venueId: VENUE_ID,
+    customer: {
+      name,
+      contact
+    },
+    fulfilment: {
+      method: "COLLECTION"
+    },
+    items: basket.map(b => ({
+      itemId: b.itemId,
+      qty: b.qty
+    }))
+  };
+
+  const res = await fetch("/api/orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  if (data.ok) {
+    alert("Order placed successfully");
+    basket = [];
+    document.getElementById("name").value = "";
+    document.getElementById("contact").value = "";
+    render();
+  } else {
+    alert(data.error || "Order failed");
+  }
+}
+
+function render() {
+  const app = document.getElementById("app");
+
+  if (!menu) {
+    app.innerHTML = "Loading...";
+    return;
+  }
+
+  let html = `<h2>${menu.restaurantName}</h2>`;
+
+  menu.items.forEach(item => {
+    html += `
+      <div style="border:1px solid #ccc;padding:10px;margin-bottom:10px;">
+        <strong>${item.name}</strong><br/>
+        ${item.description}<br/>
+        £${item.price.toFixed(2)}<br/>
+        <button onclick="addItem('${item.id}')">Add</button>
+      </div>
+    `;
+  });
+
+  html += `
+    <h3>Your Details</h3>
+    <input id="name" placeholder="Customer Name" /><br/><br/>
+    <input id="contact" placeholder="Phone / Email" /><br/><br/>
+    <h3>Total: ${formatPrice(calculateTotal())}</h3>
+    <button onclick="placeOrder()">Place Order</button>
+  `;
+
+  app.innerHTML = html;
+}
+
+loadMenu();
+</script>
+</body>
+</html>

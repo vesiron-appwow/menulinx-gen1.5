@@ -1,0 +1,114 @@
+---
+import Layout from "../../layouts/BaseLayout.astro";
+---
+
+<Layout title="Venue Settings">
+  <h1>Venue Settings</h1>
+
+  <div style="max-width:420px;">
+    <p style="margin:0 0 10px 0; color:#666;">
+      Venue: <strong id="vidLabel">default</strong>
+    </p>
+
+    <label>
+      Name<br />
+      <input id="name" style="width:100%;" />
+    </label>
+
+    <br /><br />
+
+    <label>
+      Status<br />
+      <select id="status" style="width:100%;">
+        <option value="OPEN">OPEN</option>
+        <option value="CLOSED">CLOSED</option>
+      </select>
+    </label>
+
+    <br /><br />
+
+    <label>
+      Prep Minutes<br />
+      <input id="prepMinutes" type="number" min="0" style="width:100%;" />
+    </label>
+
+    <br /><br />
+
+    <label>
+      <input type="checkbox" id="collectionEnabled" />
+      Collection Enabled
+    </label>
+
+    <br />
+
+    <label>
+      <input type="checkbox" id="deliveryEnabled" />
+      Delivery Enabled
+    </label>
+
+    <br /><br />
+
+    <button onclick="save()">Save</button>
+    <button onclick="load()" style="margin-left:8px;">Reload</button>
+    <span id="msg" style="margin-left:10px;"></span>
+  </div>
+
+<script>
+const venueId = "default";
+
+function setMsg(text, isError=false) {
+  const el = document.getElementById("msg");
+  el.textContent = text;
+  el.style.color = isError ? "crimson" : "green";
+  if (text) setTimeout(() => (el.textContent = ""), 2500);
+}
+
+async function load() {
+  const r = await fetch(`/api/admin/venue-status?venueId=${encodeURIComponent(venueId)}`);
+  const data = await r.json();
+
+  if (!data.ok || !data.venue) {
+    setMsg("Venue not found in KV (seed/initialise first).", true);
+    return;
+  }
+
+  const v = data.venue;
+
+  document.getElementById("name").value = v.name || "";
+  document.getElementById("status").value = v.status || "OPEN";
+  document.getElementById("prepMinutes").value = (v.prepMinutes ?? 15);
+  document.getElementById("collectionEnabled").checked = (v.collectionEnabled ?? true);
+  document.getElementById("deliveryEnabled").checked = (v.deliveryEnabled ?? false);
+}
+
+async function save() {
+  const payload = {
+    venueId,
+    name: document.getElementById("name").value,
+    status: document.getElementById("status").value,
+    prepMinutes: Number(document.getElementById("prepMinutes").value || 0),
+    collectionEnabled: document.getElementById("collectionEnabled").checked,
+    deliveryEnabled: document.getElementById("deliveryEnabled").checked
+  };
+
+  const r = await fetch("/api/admin/venue-settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await r.json().catch(() => ({}));
+
+  if (!r.ok || !data.ok) {
+    setMsg(data?.error || "Save failed", true);
+    return;
+  }
+
+  setMsg("Saved ✓");
+  await load(); // IMPORTANT: re-load from KV so the UI reflects reality
+}
+
+document.getElementById("vidLabel").textContent = venueId;
+load();
+</script>
+</Layout>
